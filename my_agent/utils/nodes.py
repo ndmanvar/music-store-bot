@@ -9,42 +9,16 @@ from langgraph.prebuilt import ToolNode
 from langgraph.prebuilt.chat_agent_executor import AgentState
 from langgraph.types import Command
 
-from my_agent.utils.tools import base_tools, Router, get_customer_info, get_music_recs
+from my_agent.utils.tools import Router, get_customer_info, get_music_recs
 
 
 class State(AgentState):
     # updated by the tool
     user_choice: dict[str, Any]
 
-@lru_cache(maxsize=4)
-def _get_model(model_name: str):
-    if model_name == "openai":
-        model = ChatOpenAI(temperature=0, model_name="gpt-4o")
-    else:
-        raise ValueError(f"Unsupported model type: {model_name}")
-
-    model = model.bind_tools(base_tools)
-    return model
-
-def call_model(state: State, config, **kwargs):
-    messages = state["messages"]
-    system_message = kwargs.get('system_message', None)
-    if system_message:
-        messages = [{"role": "system", "content": system_message}] + messages
-    model_name = config.get('configurable', {}).get("model_name", "openai")
-    model = _get_model(model_name)
-    response = model.invoke(messages)
-    return {"messages": [response]}
-
 def _get_last_ai_message(messages):
     for m in messages[::-1]:
         if isinstance(m, AIMessage):
-            return m
-    return None
-
-def _get_last_tool_call(messages):
-    for m in messages[::-1]:
-        if _is_tool_call(m):
             return m
     return None
 
@@ -88,8 +62,6 @@ def _route(messages):
 def should_continue(state: State):
     messages = state["messages"]
     last_message = messages[-1]
-
-    
     if last_message.tool_calls:
         return "continue"
     else:
@@ -103,21 +75,6 @@ def should_continue(state: State):
             tool_call = tool_calls[0]
             choice = json.loads(tool_call['function']['arguments'])['choice']
             return choice
-
-
-
-
-    # if state.get("user_choice"):
-    #     if state["user_choice"] == "customer":
-    #         return "customer"
-    # If there are no tool calls, then we finish
-
-    if not last_message.tool_calls:
-        return "end"
-    # Otherwise if there is, we continue
-    else:
-        return "continue"
-    # return "continue"
 
 def customer_should_continue(state: State):
     messages = state["messages"]
@@ -158,28 +115,10 @@ def greeting_agent(state: State, config):
     response = model.invoke(messages)
     return {"messages": [response]}
 
-
-
-
 # Define the routing agent
 def route_agent(state: State):
     """Routes the request to the correct sub-agent."""
     messages = state["messages"]
-    # last_message = messages[-1]
-
-    # if isinstance(last_message, AIMessage):
-    #     if _is_tool_call(last_message):
-    #         tool_call_id = last_message.tool_calls[0]['id']
-    #         print("\n\n\n\nRoute agent called", tool_call_id)
-    #     return Command(
-    #         update={
-    #         "messages": [
-    #                 ToolMessage(
-    #                     "Successfully set user choice", tool_call_id=tool_call_id
-    #                 )
-    #             ],
-    #         }
-    #     )
 
     if state.get("user_choice"):
         return state["user_choice"]
@@ -199,27 +138,6 @@ def route_agent(state: State):
         }
     )
 
-# Define the routing agent
-# def route_agent(state, config):
-    """Use the router tool to route the request to the correct sub-agent."""
-    print("\n\n\n\nRoute agent called")
-    messages = state["messages"]
-    last_message = messages[-1]
-    if isinstance(last_message, AIMessage):
-        if _is_tool_call(last_message):
-            tool_call_id = last_message.tool_calls[0]['id']
-            print("\n\n\n\nRoute agent called", tool_call_id)
-        return Command(
-            update={
-            "messages": [
-                    ToolMessage(
-                        "Successfully set user choice", tool_call_id=tool_call_id
-                    )
-                ],
-            }
-        )
-
-
 # Define music agent
 def music_agent(state: State, config):
     print("\n\n\n\nMusic agent called")
@@ -231,9 +149,6 @@ def music_agent(state: State, config):
     model = model.bind_tools([get_music_recs])
     response = model.invoke(messages)
     return {"messages": [response]}
-    
-
-    
 
 # Define customer support agent
 def customer_support_agent(state: State, config):
@@ -242,9 +157,7 @@ def customer_support_agent(state: State, config):
         If you don't know the required input, then ask the user for it.
         If you are unable to help the user, you can ask the user for more information.
         """
-
     print("\n\n\n\nCustomer agent called")
-    # response = call_model(state, config, system_message=system_message)
     messages = state["messages"]
     messages = [{"role": "system", "content": system_message}] + messages
     model = ChatOpenAI(temperature=0, model_name="gpt-4o")
@@ -252,9 +165,8 @@ def customer_support_agent(state: State, config):
     response = model.invoke(messages)
     return {"messages": [response]}
 
-
 # Define the function to execute tools
-customer_tool_node = ToolNode(base_tools)
+customer_tool_node = ToolNode([get_customer_info])
 
 router_tool_node = ToolNode([Router])
 

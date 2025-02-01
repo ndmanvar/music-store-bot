@@ -26,11 +26,9 @@ workflow.add_node("customer", customer_support_agent)
 workflow.add_node("customer_tool", customer_tool_node)
 workflow.add_node("music_tool", music_tool_node)
 
-
 # Set the entrypoint as `agent`
 # This means that this node is the first one called
 workflow.set_entry_point("agent")
-
 
 # We now add a normal edge from `router` to `agent`.
 # This means that after `tools` is called, `agent` node is called next.
@@ -45,18 +43,12 @@ workflow.add_conditional_edges(
     },
 )
 
-# workflow.add_conditional_edges("router", should_handoff, path_map={
-#     "music": "music",
-#     "customer": "customer",
-# })
-
 workflow.add_edge("router", "agent")
 
 workflow.add_conditional_edges(
     "customer", 
     customer_should_continue,{
         "continue": "customer_tool",
-        # "customer": "customer",
         "end": END,
     },
 )
@@ -65,7 +57,6 @@ workflow.add_conditional_edges(
     "music", 
     customer_should_continue,{
         "continue": "music_tool",
-        # "customer": "customer",
         "end": END,
     },
 )

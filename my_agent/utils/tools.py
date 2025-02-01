@@ -23,6 +23,3 @@ def get_customer_info(customer_id: int):
     db = SQLDatabase.from_uri("sqlite:///chinook.db")
     return db.run(f"SELECT * FROM customers WHERE CustomerID = {customer_id};")
 
-base_tools = [Router, get_customer_info]
-# customer_support_tools = [get_customer_info]
-
