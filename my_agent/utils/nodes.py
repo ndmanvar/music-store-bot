@@ -9,7 +9,7 @@ from langgraph.prebuilt import ToolNode
 from langgraph.prebuilt.chat_agent_executor import AgentState
 from langgraph.types import Command
 
-from my_agent.utils.tools import Router, get_customer_info, get_music_recs, update_customer_info
+from my_agent.utils.tools import Router, get_customer_info, update_customer_info, get_albums_by_artist
 
 
 class State(AgentState):
@@ -77,11 +77,18 @@ def greeting_agent(state: State, config):
 
 # Define music agent
 def music_agent(state: State, config):
-    system_message = """Your name is Muzika. When a user asks for help, first tell the customer your name. Next, help a user find music recommendations. If you are unable to help the user, you can ask the user for more information."""
+    system_message = """
+        Your job is to help a customer find any songs they are looking for. 
+
+        You only have certain tools you can use. If a customer asks you to look something up that you don't know how, politely tell them what you can help with.
+
+        When looking up artists and songs, sometimes the artist/song will not be found. In that case, the tools will return information \
+        on simliar songs and artists. This is intentional, it is not the tool messing up.
+    """
     messages = state["messages"]
     messages = [{"role": "system", "content": system_message}] + messages
     model = ChatOpenAI(temperature=0, model_name="gpt-4o")
-    model = model.bind_tools([get_music_recs])
+    model = model.bind_tools([get_albums_by_artist])
     response = model.invoke(messages)
     return {"messages": [response]}
 
@@ -102,4 +109,4 @@ def customer_support_agent(state: State, config):
 
 # Define the function to execute tools
 customer_tool_node = ToolNode([get_customer_info, update_customer_info])
-music_tool_node = ToolNode([get_music_recs])
+music_tool_node = ToolNode([get_albums_by_artist])
