@@ -62,19 +62,31 @@ def _route(messages):
 def should_continue(state: State):
     messages = state["messages"]
     last_message = messages[-1]
-    if last_message.tool_calls:
-        return "continue"
+
+    print("last message: ", last_message)
+
+    if last_message.content == "Routing to customer":
+        return "customer"
+    elif last_message.content == "Routing to music":
+        return "music"
     else:
-        tcall_message = _get_last_router_tool_call(messages)
-        if not tcall_message:
-            return "end"
-        else:
-            tool_calls = tcall_message.additional_kwargs['tool_calls']
-            if len(tool_calls) > 1:
-                raise ValueError
-            tool_call = tool_calls[0]
-            choice = json.loads(tool_call['function']['arguments'])['choice']
-            return choice
+        return "end"
+
+    # if not last_message.tool_calls:
+    #     return "end"
+    # else:
+    #     # there were tool calls
+    #     # we should go to what is returned by Router
+    #     tool_calls = last_message.tool_calls
+    #     tool_call = tool_calls[0]
+        
+    #     # print("tool call: ", tool_call)
+    #     if tool_call['name'] == "Router":
+    #         return tool_call['args']['choice']
+    #     else:
+    #         return "end"
+        
+        # return json.loads(tool_call['function']['arguments'])['choice']
 
 def customer_should_continue(state: State):
     messages = state["messages"]
@@ -103,17 +115,40 @@ def greeting_agent(state: State, config):
         You should interact politely with customers to try to figure out how you can help. You can help in a few ways:
 
         - Updating user information: if a customer wants to update the information in the user database. Call the router with `customer`
-        - Recomending music: if a customer wants to find some music or information about music. Call the router with `music`
+        - Recommending music: if a customer wants to find some music or information about music. Call the router with `music`
 
         If the user is asking or wants to ask about updating or accessing their information, send them to that route.
         If the user is asking or wants to ask about music, send them to that route.
-        Otherwise, respond."""
+        Otherwise, respond 'could not route'."""
     messages = state["messages"]
     messages = [{"role": "system", "content": system_message}] + messages
     model = ChatOpenAI(temperature=0, model_name="gpt-4o")
     model = model.bind_tools([Router])
     response = model.invoke(messages)
-    return {"messages": [response]}
+    
+    # Determine the next node based on the tool call response
+
+    print("response: ", response)
+
+    state["messages"].append(response)
+
+
+    if response.additional_kwargs and 'tool_calls' in response.additional_kwargs:
+        tool_calls = response.additional_kwargs['tool_calls']
+        for tool_call in tool_calls:
+            
+
+            tool_call_id = tool_call['id']
+            arguments = json.loads(tool_call['function']['arguments'])
+            choice = arguments['choice']
+            tool_message = ToolMessage(content=f"Routing to {choice}", tool_call_id=tool_call_id)
+
+            print("tool message: ", tool_message)
+
+            state["messages"].append(tool_message)
+            state["next"] = choice
+    
+    return state
 
 # Define the routing agent
 def route_agent(state: State):
@@ -161,13 +196,26 @@ def customer_support_agent(state: State, config):
     messages = state["messages"]
     messages = [{"role": "system", "content": system_message}] + messages
     model = ChatOpenAI(temperature=0, model_name="gpt-4o")
-    model = model.bind_tools([get_customer_info])
+    # model = model.bind_tools([get_customer_info])
     response = model.invoke(messages)
-    return {"messages": [response]}
+    
+    # Ensure that the response includes tool call responses
+    # if response.additional_kwargs and 'tool_calls' in response.additional_kwargs:
+    #     tool_calls = response.additional_kwargs['tool_calls']
+    #     for tool_call in tool_calls:
+    #         tool_call_id = tool_call['id']
+    #         tool_arguments = json.loads(tool_call['function']['arguments'])
+    #         customer_id = tool_arguments['customer_id']
+    #         tool_result = get_customer_info(customer_id)
+    #         tool_message = ToolMessage(content=tool_result, tool_call_id=tool_call_id)
+    #         state["messages"].append(tool_message)
+    
+    state["messages"].append(response)
+    return state
 
 # Define the function to execute tools
 customer_tool_node = ToolNode([get_customer_info])
 
-router_tool_node = ToolNode([Router])
+# router_tool_node = ToolNode([Router])
 
 music_tool_node = ToolNode([get_music_recs])
