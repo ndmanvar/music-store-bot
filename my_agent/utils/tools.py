@@ -10,11 +10,6 @@ class Router(BaseModel):
     """Call this if you are able to route the user to the appropriate representative."""
     choice: str = Field(description="should be one of: music, customer")
 
-# @tool
-# def get_music_recs():
-#     """This returns some music recommendations"""
-#     return "[Here are some music recommendations!]"
-
 # This tool is given to the agent to look up information about a customer
 @tool
 def get_customer_info(customer_id: int, first_name: str, last_name: str):
@@ -39,16 +34,11 @@ def get_customer_info(customer_id: int, first_name: str, last_name: str):
         SELECT * FROM customers
         WHERE CustomerId = %s AND FirstName = '%s' AND LastName = '%s'
     """
-    # return db.run(f"SELECT * FROM customers WHERE CustomerID = {customer_id}")
-    # print("\n")
-    # print("query is %s" % query % (customer_id, first_name, last_name))
-    # print("\n")
     try:
         db = SQLDatabase.from_uri("sqlite:///chinook.db")
         return db.run(query % (customer_id, first_name, last_name))
     except Exception as e:
         return {"error": "Could not find customer with  CustomerId = %s AND FirstName = '%s' AND LastName = '%s'" % (customer_id, first_name, last_name)}
-
 
 # This tools is given to the agent to update information about a customer
 @tool
@@ -86,7 +76,6 @@ def update_customer_info(customer_id: int, first_name: str, last_name: str, upda
     except Exception as e:
         return {"error": f"Error updating customer info: {e}"}
 
-
 @tool
 def get_albums_by_artist(artist):
     """Get albums by an artist (or similar artists)."""
@@ -100,7 +89,6 @@ def get_albums_by_artist(artist):
     docs = artist_retriever.get_relevant_documents(artist)
     artist_ids = ", ".join([str(d.metadata['ArtistId']) for d in docs])
     return db.run(f"SELECT Title, Name FROM albums LEFT JOIN artists ON albums.ArtistId = artists.ArtistId WHERE albums.ArtistId in ({artist_ids});", include_columns=True)
-
 
 @tool
 def get_tracks_by_artist(artist):
