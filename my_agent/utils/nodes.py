@@ -40,7 +40,7 @@ def customer_should_continue(state: State):
         return "continue"
 
 # Define the initial greeting agent
-def greeting_agent(state: State, config):
+def agent(state: State, config):
     system_message = """Your job is to help as a customer service representative for a music store.
 
         You should interact politely with customers to try to figure out how you can help. You can help in a few ways:

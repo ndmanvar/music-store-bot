@@ -2,7 +2,7 @@ from typing import TypedDict, Literal
 
 from langgraph.graph import StateGraph, END
 
-from my_agent.utils.nodes import greeting_agent, should_continue, music_agent, customer_support_agent, customer_should_continue, customer_tool_node, music_tool_node
+from my_agent.utils.nodes import agent, should_continue, music_agent, customer_support_agent, customer_should_continue, customer_tool_node, music_tool_node
 from my_agent.utils.state import AgentState
 
 from langgraph.checkpoint.memory import MemorySaver
@@ -17,7 +17,7 @@ class GraphConfig(TypedDict):
 workflow = StateGraph(AgentState, config_schema=GraphConfig)
 
 # Define the nodes we will cycle between
-workflow.add_node("agent", greeting_agent)
+workflow.add_node("agent", agent)
 workflow.add_node("music", music_agent)
 workflow.add_node("customer", customer_support_agent)
 workflow.add_node("customer_tool", customer_tool_node)
