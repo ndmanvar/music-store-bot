@@ -16,55 +16,10 @@ class State(AgentState):
     # updated by the tool
     user_choice: dict[str, Any]
 
-def _get_last_ai_message(messages):
-    for m in messages[::-1]:
-        if isinstance(m, AIMessage):
-            return m
-    return None
-
-def _get_last_router_tool_call(messages):
-    for m in messages[::-1]:
-        if _is_tool_call(m):
-            tool_calls = m.additional_kwargs['tool_calls']
-            tool_call = tool_calls[0]
-            if tool_call['function']['name'] == "Router":
-                return m
-    return None
-
-def _is_tool_call(msg):
-    return hasattr(msg, "additional_kwargs") and 'tool_calls' in msg.additional_kwargs
-
-def _route(messages):
-    last_message = messages[-1]
-    if isinstance(last_message, AIMessage):
-        if not _is_tool_call(last_message):
-            return END
-        else:
-            if last_message.additional_kwargs['tool_calls']:
-                tool_calls = last_message.additional_kwargs['tool_calls']
-                if len(tool_calls) > 1:
-                    raise ValueError
-                tool_call = tool_calls[0]
-                choice = json.loads(tool_call['function']['arguments'])['choice']
-                return choice, tool_call['id']
-    else:
-        last_m = _get_last_ai_message(messages)
-        if last_m is None:
-            return "agent"
-        if last_m.name == "music":
-            return "music"
-        elif last_m.name == "customer":
-            return "customer"
-        else:
-            return "agent"   
-
 # Define the function that determines whether to continue or not
 def should_continue(state: State):
     messages = state["messages"]
     last_message = messages[-1]
-
-    print("last message: ", last_message)
-
     if last_message.content == "Routing to customer":
         return "customer"
     elif last_message.content == "Routing to music":
@@ -74,22 +29,6 @@ def should_continue(state: State):
             print("user choice: ", state["user_choice"])
             return state["user_choice"]
         return "end"
-
-    # if not last_message.tool_calls:
-    #     return "end"
-    # else:
-    #     # there were tool calls
-    #     # we should go to what is returned by Router
-    #     tool_calls = last_message.tool_calls
-    #     tool_call = tool_calls[0]
-        
-    #     # print("tool call: ", tool_call)
-    #     if tool_call['name'] == "Router":
-    #         return tool_call['args']['choice']
-    #     else:
-    #         return "end"
-        
-        # return json.loads(tool_call['function']['arguments'])['choice']
 
 def customer_should_continue(state: State):
     messages = state["messages"]
@@ -118,13 +57,7 @@ def greeting_agent(state: State, config):
     model = ChatOpenAI(temperature=0, model_name="gpt-4o")
     model = model.bind_tools([Router])
     response = model.invoke(messages)
-    
-    # Determine the next node based on the tool call response
-
-    print("response: ", response)
-
     state["messages"].append(response)
-
 
     if response.additional_kwargs and 'tool_calls' in response.additional_kwargs:
         tool_calls = response.additional_kwargs['tool_calls']
@@ -145,8 +78,6 @@ def greeting_agent(state: State, config):
 
 # Define music agent
 def music_agent(state: State, config):
-    print("\n\n\n\nMusic agent called")
-    # A node that runs the tools called in the last AIMessage.
     system_message = """Your name is Muzika. When a user asks for help, first tell the customer your name. Next, help a user find music recommendations. If you are unable to help the user, you can ask the user for more information."""
     messages = state["messages"]
     messages = [{"role": "system", "content": system_message}] + messages
@@ -162,30 +93,14 @@ def customer_support_agent(state: State, config):
         If you don't know the required input, then ask the user for it.
         If you are unable to help the user, you can ask the user for more information.
         """
-    print("\n\n\n\nCustomer agent called")
     messages = state["messages"]
     messages = [{"role": "system", "content": system_message}] + messages
     model = ChatOpenAI(temperature=0, model_name="gpt-4o")
     model = model.bind_tools([get_customer_info])
     response = model.invoke(messages)
-    
-    # Ensure that the response includes tool call responses
-    # if response.additional_kwargs and 'tool_calls' in response.additional_kwargs:
-    #     tool_calls = response.additional_kwargs['tool_calls']
-    #     for tool_call in tool_calls:
-    #         tool_call_id = tool_call['id']
-    #         tool_arguments = json.loads(tool_call['function']['arguments'])
-    #         customer_id = tool_arguments['customer_id']
-    #         tool_result = get_customer_info(customer_id)
-    #         tool_message = ToolMessage(content=tool_result, tool_call_id=tool_call_id)
-    #         state["messages"].append(tool_message)
-    
     state["messages"].append(response)
     return state
 
 # Define the function to execute tools
 customer_tool_node = ToolNode([get_customer_info])
-
-# router_tool_node = ToolNode([Router])
-
 music_tool_node = ToolNode([get_music_recs])
