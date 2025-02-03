@@ -9,7 +9,7 @@ from langgraph.prebuilt import ToolNode
 from langgraph.prebuilt.chat_agent_executor import AgentState
 from langgraph.types import Command
 
-from my_agent.utils.tools import Router, get_customer_info, update_customer_info, get_albums_by_artist
+from my_agent.utils.tools import Router, get_customer_info, update_customer_info, get_albums_by_artist, check_for_songs, get_tracks_by_artist
 
 
 class State(AgentState):
@@ -88,7 +88,7 @@ def music_agent(state: State, config):
     messages = state["messages"]
     messages = [{"role": "system", "content": system_message}] + messages
     model = ChatOpenAI(temperature=0, model_name="gpt-4o")
-    model = model.bind_tools([get_albums_by_artist])
+    model = model.bind_tools([get_albums_by_artist, get_tracks_by_artist, check_for_songs])
     response = model.invoke(messages)
     return {"messages": [response]}
 
@@ -109,4 +109,4 @@ def customer_support_agent(state: State, config):
 
 # Define the function to execute tools
 customer_tool_node = ToolNode([get_customer_info, update_customer_info])
-music_tool_node = ToolNode([get_albums_by_artist])
+music_tool_node = ToolNode([get_albums_by_artist, get_tracks_by_artist, check_for_songs])

@@ -90,7 +90,6 @@ def update_customer_info(customer_id: int, first_name: str, last_name: str, upda
 @tool
 def get_albums_by_artist(artist):
     """Get albums by an artist (or similar artists)."""
-
     db = SQLDatabase.from_uri("sqlite:///chinook.db")
     artists = db._execute("select * from artists")
     artist_retriever = SKLearnVectorStore.from_texts(
@@ -98,8 +97,34 @@ def get_albums_by_artist(artist):
         OpenAIEmbeddings(), 
         metadatas=artists
     ).as_retriever()
-
     docs = artist_retriever.get_relevant_documents(artist)
-
     artist_ids = ", ".join([str(d.metadata['ArtistId']) for d in docs])
     return db.run(f"SELECT Title, Name FROM albums LEFT JOIN artists ON albums.ArtistId = artists.ArtistId WHERE albums.ArtistId in ({artist_ids});", include_columns=True)
+
+
+@tool
+def get_tracks_by_artist(artist):
+    """Get songs by an artist (or similar artists)."""
+    db = SQLDatabase.from_uri("sqlite:///chinook.db")
+    artists = db._execute("select * from artists")
+    artist_retriever = SKLearnVectorStore.from_texts(
+        [a['Name'] for a in artists],
+        OpenAIEmbeddings(), 
+        metadatas=artists
+    ).as_retriever()
+    docs = artist_retriever.get_relevant_documents(artist)
+    artist_ids = ", ".join([str(d.metadata['ArtistId']) for d in docs])
+    return db.run(f"SELECT tracks.Name as SongName, artists.Name as ArtistName FROM albums LEFT JOIN artists ON albums.ArtistId = artists.ArtistId LEFT JOIN tracks ON tracks.AlbumId = albums.AlbumId WHERE albums.ArtistId in ({artist_ids});", include_columns=True)
+
+@tool
+def check_for_songs(song_title):
+    """Check if a song exists by its name."""
+    db = SQLDatabase.from_uri("sqlite:///chinook.db")
+    songs = db._execute("select * from tracks")
+    song_retriever = SKLearnVectorStore.from_texts(
+        [a['Name'] for a in songs],
+        OpenAIEmbeddings(), 
+        metadatas=songs
+    ).as_retriever()
+
+    return song_retriever.get_relevant_documents(song_title)
