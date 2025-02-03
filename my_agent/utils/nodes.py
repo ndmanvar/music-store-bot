@@ -13,13 +13,14 @@ from my_agent.utils.tools import Router, get_customer_info, get_music_recs
 
 
 class State(AgentState):
-    # updated by the tool
+    # updated by greeting_agent
     user_choice: dict[str, Any]
 
 # Define the function that determines whether to continue or not
 def should_continue(state: State):
     messages = state["messages"]
     last_message = messages[-1]
+    # TODO:, check if last messsage is AIMessage
     if last_message.content == "Routing to customer":
         return "customer"
     elif last_message.content == "Routing to music":
