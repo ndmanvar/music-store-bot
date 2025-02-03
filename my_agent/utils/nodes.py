@@ -70,6 +70,9 @@ def should_continue(state: State):
     elif last_message.content == "Routing to music":
         return "music"
     else:
+        if state.get("user_choice"):
+            print("user choice: ", state["user_choice"])
+            return state["user_choice"]
         return "end"
 
     # if not last_message.tool_calls:
@@ -97,16 +100,6 @@ def customer_should_continue(state: State):
     # Otherwise if there is, we continue
     else:
         return "continue"
-
-# Define the function that determines which agent to hand off to
-def should_handoff(state: State):
-    user_choice = state["user_choice"]
-    # If there are no tool calls, then we finish
-    if user_choice == "music":
-        return "music"
-    # Otherwise if there is, we continue
-    elif user_choice == "customer":
-        return "customer"
 
 # Define the initial greeting agent
 def greeting_agent(state: State, config):
@@ -147,31 +140,8 @@ def greeting_agent(state: State, config):
 
             state["messages"].append(tool_message)
             state["next"] = choice
-    
+            state["user_choice"] = choice
     return state
-
-# Define the routing agent
-def route_agent(state: State):
-    """Routes the request to the correct sub-agent."""
-    messages = state["messages"]
-
-    if state.get("user_choice"):
-        return state["user_choice"]
-    
-    choice, tool_call_id = _route(messages)
-    return Command(
-        goto=choice,
-        update={
-            # update the state keys
-            "user_choice": choice,
-            # update the message history
-            "messages": [
-                ToolMessage(
-                    "Successfully set user choice", tool_call_id=tool_call_id
-                )
-            ],
-        }
-    )
 
 # Define music agent
 def music_agent(state: State, config):
@@ -196,7 +166,7 @@ def customer_support_agent(state: State, config):
     messages = state["messages"]
     messages = [{"role": "system", "content": system_message}] + messages
     model = ChatOpenAI(temperature=0, model_name="gpt-4o")
-    # model = model.bind_tools([get_customer_info])
+    model = model.bind_tools([get_customer_info])
     response = model.invoke(messages)
     
     # Ensure that the response includes tool call responses
