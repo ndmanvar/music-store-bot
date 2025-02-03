@@ -9,7 +9,7 @@ from langgraph.prebuilt import ToolNode
 from langgraph.prebuilt.chat_agent_executor import AgentState
 from langgraph.types import Command
 
-from my_agent.utils.tools import Router, get_customer_info, get_music_recs
+from my_agent.utils.tools import Router, get_customer_info, get_music_recs, update_customer_info
 
 
 class State(AgentState):
@@ -20,7 +20,8 @@ class State(AgentState):
 def should_continue(state: State):
     messages = state["messages"]
     last_message = messages[-1]
-    # TODO:, check if last messsage is AIMessage
+    # TODO:, check if last messsage is ToolMessage/AIMessage
+    print("last message: ", last_message)
     if last_message.content == "Routing to customer":
         return "customer"
     elif last_message.content == "Routing to music":
@@ -52,7 +53,9 @@ def greeting_agent(state: State, config):
 
         If the user is asking or wants to ask about updating or accessing their information, send them to that route.
         If the user is asking or wants to ask about music, send them to that route.
-        Otherwise, respond 'could not route'."""
+
+        Your only job is to route the user to the appropriate representative. You can ask the user for more information if you are unable to help them.
+        """
     messages = state["messages"]
     messages = [{"role": "system", "content": system_message}] + messages
     model = ChatOpenAI(temperature=0, model_name="gpt-4o")
@@ -63,15 +66,10 @@ def greeting_agent(state: State, config):
     if response.additional_kwargs and 'tool_calls' in response.additional_kwargs:
         tool_calls = response.additional_kwargs['tool_calls']
         for tool_call in tool_calls:
-            
-
             tool_call_id = tool_call['id']
             arguments = json.loads(tool_call['function']['arguments'])
             choice = arguments['choice']
             tool_message = ToolMessage(content=f"Routing to {choice}", tool_call_id=tool_call_id)
-
-            print("tool message: ", tool_message)
-
             state["messages"].append(tool_message)
             state["next"] = choice
             state["user_choice"] = choice
@@ -97,11 +95,11 @@ def customer_support_agent(state: State, config):
     messages = state["messages"]
     messages = [{"role": "system", "content": system_message}] + messages
     model = ChatOpenAI(temperature=0, model_name="gpt-4o")
-    model = model.bind_tools([get_customer_info])
+    model = model.bind_tools([get_customer_info, update_customer_info])
     response = model.invoke(messages)
     state["messages"].append(response)
     return state
 
 # Define the function to execute tools
-customer_tool_node = ToolNode([get_customer_info])
+customer_tool_node = ToolNode([get_customer_info, update_customer_info])
 music_tool_node = ToolNode([get_music_recs])
