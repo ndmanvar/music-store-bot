@@ -46,6 +46,7 @@ def get_customer_info(customer_id: int, first_name: str, last_name: str):
 def update_customer_info(customer_id: int, first_name: str, last_name: str, updates: dict):
     """
     Updates customer information in the database based on Customer ID, first name, and last name. ALWAYS retrieve the customer information by looking it up first before updating.
+    ALWAYS make sure you have the updates dictionary before updating the customer information.
 
     Args:
         customer_id (int): The ID of the customer to update.
@@ -70,7 +71,11 @@ def update_customer_info(customer_id: int, first_name: str, last_name: str, upda
 
     # Add the customer_id to the parameters
     parameters = {**updates, "customer_id": customer_id, "first_name": first_name, "last_name": last_name}
-    
+
+    # Simulate human approval process
+    approval = input(f"Do you approve the following update to customerId {customer_id}? {updates} (yes/no): ")
+    if approval.lower() != 'yes':
+        return {"error": "Update not approved by human."}
     try:
         return db.run(query, parameters=parameters)
     except Exception as e:
