@@ -5,6 +5,8 @@ from pydantic import BaseModel, Field
 from langchain_community.vectorstores import SKLearnVectorStore
 from langchain_openai import OpenAIEmbeddings
 
+db = SQLDatabase.from_uri("sqlite:///chinook.db")
+
 @tool
 class Router(BaseModel):
     """Call this if you are able to route the user to the appropriate representative."""
@@ -35,7 +37,6 @@ def get_customer_info(customer_id: int, first_name: str, last_name: str):
         WHERE CustomerId = %s AND FirstName = '%s' AND LastName = '%s'
     """
     try:
-        db = SQLDatabase.from_uri("sqlite:///chinook.db")
         return db.run(query % (customer_id, first_name, last_name))
     except Exception as e:
         return {"error": "Could not find customer with  CustomerId = %s AND FirstName = '%s' AND LastName = '%s'" % (customer_id, first_name, last_name)}
@@ -71,21 +72,45 @@ def update_customer_info(customer_id: int, first_name: str, last_name: str, upda
     parameters = {**updates, "customer_id": customer_id, "first_name": first_name, "last_name": last_name}
     
     try:
-        db = SQLDatabase.from_uri("sqlite:///chinook.db")
         return db.run(query, parameters=parameters)
     except Exception as e:
         return {"error": f"Error updating customer info: {e}"}
 
 @tool
-def get_albums_by_artist(artist):
-    """Get albums by an artist (or similar artists)."""
-    db = SQLDatabase.from_uri("sqlite:///chinook.db")
-    artists = db._execute("select * from artists")
-    artist_retriever = SKLearnVectorStore.from_texts(
+def get_invoices_by_customer(customer_id):
+    """
+    Get invoices for a given a customer.
+    ALWAYS retrieve the customer information by looking it up first before looking up invoices.
+    """
+    return db.run(f"SELECT * FROM invoices WHERE CustomerId = {customer_id};")
+
+@tool
+def get_purchased_albums_by_customer(customer_id):
+    """
+    Get albums purchased by a customer.
+    ALWAYS retrieve the customer information by looking it up first before looking up invoices.
+    """
+    return db.run(f"SELECT * FROM albums WHERE AlbumId IN (SELECT AlbumId FROM invoice_items WHERE InvoiceId IN (SELECT InvoiceId FROM invoices WHERE CustomerId = {customer_id}));")
+
+
+artists = db._execute("select * from artists")
+
+artist_retriever = SKLearnVectorStore.from_texts(
         [a['Name'] for a in artists],
         OpenAIEmbeddings(), 
         metadatas=artists
     ).as_retriever()
+
+songs = db._execute("select * from tracks")
+song_retriever = SKLearnVectorStore.from_texts(
+    [a['Name'] for a in songs],
+    OpenAIEmbeddings(), 
+    metadatas=songs
+).as_retriever()
+
+@tool
+def get_albums_by_artist(artist):
+    """Get albums by an artist (or similar artists)."""
     docs = artist_retriever.get_relevant_documents(artist)
     artist_ids = ", ".join([str(d.metadata['ArtistId']) for d in docs])
     return db.run(f"SELECT Title, Name FROM albums LEFT JOIN artists ON albums.ArtistId = artists.ArtistId WHERE albums.ArtistId in ({artist_ids});", include_columns=True)
@@ -93,13 +118,6 @@ def get_albums_by_artist(artist):
 @tool
 def get_tracks_by_artist(artist):
     """Get songs by an artist (or similar artists)."""
-    db = SQLDatabase.from_uri("sqlite:///chinook.db")
-    artists = db._execute("select * from artists")
-    artist_retriever = SKLearnVectorStore.from_texts(
-        [a['Name'] for a in artists],
-        OpenAIEmbeddings(), 
-        metadatas=artists
-    ).as_retriever()
     docs = artist_retriever.get_relevant_documents(artist)
     artist_ids = ", ".join([str(d.metadata['ArtistId']) for d in docs])
     return db.run(f"SELECT tracks.Name as SongName, artists.Name as ArtistName FROM albums LEFT JOIN artists ON albums.ArtistId = artists.ArtistId LEFT JOIN tracks ON tracks.AlbumId = albums.AlbumId WHERE albums.ArtistId in ({artist_ids});", include_columns=True)
@@ -107,12 +125,4 @@ def get_tracks_by_artist(artist):
 @tool
 def check_for_songs(song_title):
     """Check if a song exists by its name."""
-    db = SQLDatabase.from_uri("sqlite:///chinook.db")
-    songs = db._execute("select * from tracks")
-    song_retriever = SKLearnVectorStore.from_texts(
-        [a['Name'] for a in songs],
-        OpenAIEmbeddings(), 
-        metadatas=songs
-    ).as_retriever()
-
     return song_retriever.get_relevant_documents(song_title)

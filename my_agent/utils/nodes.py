@@ -7,7 +7,7 @@ from langgraph.graph import END
 from langgraph.prebuilt import ToolNode
 from langgraph.prebuilt.chat_agent_executor import AgentState
 from langgraph.types import Command
-from my_agent.utils.tools import Router, get_customer_info, update_customer_info, get_albums_by_artist, check_for_songs, get_tracks_by_artist
+from my_agent.utils.tools import Router, get_customer_info, update_customer_info, get_albums_by_artist, check_for_songs, get_tracks_by_artist, get_invoices_by_customer, get_purchased_albums_by_customer
 
 class State(AgentState):
     # updated by greeting_agent
@@ -75,7 +75,7 @@ def greeting_agent(state: State, config):
 # Define music agent
 def music_agent(state: State, config):
     system_message = """
-        Your job is to help a customer find any songs they are looking for. 
+        Your job is to provide music recommendations based on supplied artists or albums. You can also check if a song exists in the database.
 
         You only have certain tools you can use. If a customer asks you to look something up that you don't know how, politely tell them what you can help with.
 
@@ -99,11 +99,11 @@ def customer_support_agent(state: State, config):
     messages = state["messages"]
     messages = [{"role": "system", "content": system_message}] + messages
     model = ChatOpenAI(temperature=0, model_name="gpt-4o")
-    model = model.bind_tools([get_customer_info, update_customer_info])
+    model = model.bind_tools([get_customer_info, update_customer_info, get_invoices_by_customer, get_purchased_albums_by_customer])
     response = model.invoke(messages)
     state["messages"].append(response)
     return state
 
 # Define the function to execute tools
-customer_tool_node = ToolNode([get_customer_info, update_customer_info])
+customer_tool_node = ToolNode([get_customer_info, update_customer_info, get_invoices_by_customer, get_purchased_albums_by_customer])
 music_tool_node = ToolNode([get_albums_by_artist, get_tracks_by_artist, check_for_songs])
