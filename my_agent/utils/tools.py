@@ -1,3 +1,4 @@
+from typing import List
 from langchain_community.utilities.sql_database import SQLDatabase
 from langchain_core.tools import tool
 from pydantic import BaseModel, Field
@@ -97,6 +98,25 @@ def get_purchased_albums_by_customer(customer_id):
     """
     return db.run(f"SELECT * FROM albums WHERE AlbumId IN (SELECT AlbumId FROM invoice_items WHERE InvoiceId IN (SELECT InvoiceId FROM invoices WHERE CustomerId = {customer_id}));")
 
+@tool
+def get_top_purchased_artists_by_customer(customer_id):
+    """
+    Get the top 10 most purchased artists by a customer.
+    ALWAYS retrieve the customer information by looking it up first before looking up invoices.
+    """
+    query = """
+        SELECT artists.*, COUNT(invoice_items.TrackId) as PurchaseCount
+        FROM artists
+        JOIN albums ON artists.ArtistId = albums.ArtistId
+        JOIN tracks ON albums.AlbumId = tracks.AlbumId
+        JOIN invoice_items ON tracks.TrackId = invoice_items.TrackId
+        JOIN invoices ON invoice_items.InvoiceId = invoices.InvoiceId
+        WHERE invoices.CustomerId = :customer_id
+        GROUP BY artists.ArtistId
+        ORDER BY PurchaseCount DESC
+        LIMIT 10;
+    """
+    return db.run(query, parameters={"customer_id": customer_id})
 
 artists = db._execute("select * from artists")
 
@@ -118,6 +138,9 @@ def get_albums_by_artist(artist):
     """Get albums by an artist (or similar artists)."""
     docs = artist_retriever.get_relevant_documents(artist)
     artist_ids = ", ".join([str(d.metadata['ArtistId']) for d in docs])
+    print("docs is ", docs)
+    print("artist_ids is ", artist_ids)
+    
     return db.run(f"SELECT Title, Name FROM albums LEFT JOIN artists ON albums.ArtistId = artists.ArtistId WHERE albums.ArtistId in ({artist_ids});", include_columns=True)
 
 @tool
