@@ -11,7 +11,15 @@ from my_agent.utils.tools import Router, get_customer_info, update_customer_info
 
 class State(AgentState):
     # updated by greeting_agent
-    user_choice: dict[str, Any]
+    user_choice: str
+    
+
+def dispatcher(state: State):
+    return state
+
+def dispatcher_should_continue(state: State):
+    if state.get("user_choice"):
+        return state["user_choice"]
 
 # Define the function that determines whether to continue or not
 def should_continue(state: State):
@@ -19,14 +27,12 @@ def should_continue(state: State):
     last_message = messages[-1]
     # TODO:, check if last messsage is ToolMessage/AIMessage
     print("last message: ", last_message)
-    if last_message.content == "Routing to customer":
-        return "customer"
-    elif last_message.content == "Routing to music":
-        return "music"
+
+    if state.get("user_choice"):
+        print("user choice: ", state["user_choice"])
+        # return state["user_choice"]
+        return "continue"
     else:
-        if state.get("user_choice"):
-            print("user choice: ", state["user_choice"])
-            return state["user_choice"]
         return "end"
 
 def customer_should_continue(state: State):
