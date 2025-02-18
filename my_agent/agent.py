@@ -50,7 +50,7 @@ workflow.add_conditional_edges(
     "customer", 
     customer_should_continue, {
         "continue": "customer_tool",
-        "end": END,
+        "end": "dispatcher",
     },
 )
 
@@ -58,7 +58,7 @@ workflow.add_conditional_edges(
     "music", 
     customer_should_continue, {
         "continue": "music_tool",
-        "end": END,
+        "end": "dispatcher",
     },
 )
 

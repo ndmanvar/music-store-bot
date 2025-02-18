@@ -12,14 +12,18 @@ from my_agent.utils.tools import Router, get_customer_info, update_customer_info
 class State(AgentState):
     # updated by greeting_agent
     user_choice: str
+    dispatcher_steps: list[str]
     
 
 def dispatcher(state: State):
     return state
 
 def dispatcher_should_continue(state: State):
-    if state.get("user_choice"):
-        return state["user_choice"]
+    if state.get("dispatcher_steps") and len(state["dispatcher_steps"]) > 0:
+        step = state["dispatcher_steps"].pop(0)
+        return step
+    else:
+        return "end"
 
 # Define the function that determines whether to continue or not
 def should_continue(state: State):
@@ -76,6 +80,7 @@ def agent(state: State, config):
             state["messages"].append(tool_message)
             state["next"] = choice
             state["user_choice"] = choice
+            state["dispatcher_steps"] = [choice]
     return state
 
 # Define music agent
