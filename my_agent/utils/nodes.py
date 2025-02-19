@@ -11,14 +11,13 @@ from my_agent.utils.tools import Router, get_customer_info, update_customer_info
 
 class State(AgentState):
     # updated by greeting_agent
-    user_choices: list[str]
-    dispatcher_steps: list[str]
+    steps: list[str]
     index: int = 0
     next: str = ""
 
 def dispatcher(state: State):
-    if state.get("dispatcher_steps") and len(state["dispatcher_steps"]) > state["index"]:
-        state["next"] = state["dispatcher_steps"][state["index"]]
+    if state.get("steps") and len(state["steps"]) > state["index"]:
+        state["next"] = state["steps"][state["index"]]
         state["index"] += 1
     else:
         state["index"] = 0
@@ -33,7 +32,7 @@ def should_continue(state: State):
     messages = state["messages"]
     last_message = messages[-1]
 
-    if state.get("user_choices") and len(state["user_choices"]) > 0:
+    if state.get("steps") and len(state["steps"]) > 0:
         return "continue"
     else:
         return "end"
@@ -79,21 +78,21 @@ def agent(state: State, config):
             tool_message = ToolMessage(content=f"Routing to {choices}", tool_call_id=tool_call_id)
             state["messages"].append(tool_message)
             # state["next"] = choices
-            state["user_choices"] = choices
-            state["dispatcher_steps"] = choices
+            state["steps"] = choices
             state["index"] = 0
     else:
-        if state.get("user_choices"):
-            state["dispatcher_steps"] = state["user_choices"]
+        if state.get("steps"):
             state["index"] = 0
     return state
 
 # Define music agent
 def music_agent(state: State, config):
     system_message = """
-        Your job is to provide music recommendations based on supplied artists or albums. You can also check if a song exists in the database.
+        Your job is to provide music recommendations based on supplied artists, albums, or past purchases. You can also check if a song exists in the database.
+        You don't have the ability to help with anything else besides that.
 
-        You only have certain tools you can use. If a customer asks you to look something up that you don't know how, politely tell them what you can help with.
+        You only have certain tools you can use. These tools require specific input.
+        If a customer asks you to look something up that you don't know how, politely tell them what you can help with.
 
         When looking up artists and songs, sometimes the artist/song will not be found. In that case, the tools will return information \
         on simliar songs and artists. This is intentional, it is not the tool messing up.
@@ -103,7 +102,9 @@ def music_agent(state: State, config):
     model = ChatOpenAI(temperature=0, model_name="gpt-4o")
     model = model.bind_tools([get_albums_by_artist, get_tracks_by_artist, check_for_songs])
     response = model.invoke(messages)
-    return {"messages": [response]}
+    response = model.invoke(messages)
+    state["messages"].append(response)
+    return state
 
 # Define customer support agent
 def customer_support_agent(state: State, config):
