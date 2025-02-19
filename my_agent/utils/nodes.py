@@ -11,30 +11,29 @@ from my_agent.utils.tools import Router, get_customer_info, update_customer_info
 
 class State(AgentState):
     # updated by greeting_agent
-    user_choice: str
+    user_choices: list[str]
     dispatcher_steps: list[str]
-    
+    index: int = 0
+    next: str = ""
 
 def dispatcher(state: State):
+    if state.get("dispatcher_steps") and len(state["dispatcher_steps"]) > state["index"]:
+        state["next"] = state["dispatcher_steps"][state["index"]]
+        state["index"] += 1
+    else:
+        state["index"] = 0
+        state["next"] = "end"
     return state
 
 def dispatcher_should_continue(state: State):
-    if state.get("dispatcher_steps") and len(state["dispatcher_steps"]) > 0:
-        step = state["dispatcher_steps"].pop(0)
-        return step
-    else:
-        return "end"
+    return state["next"]
 
 # Define the function that determines whether to continue or not
 def should_continue(state: State):
     messages = state["messages"]
     last_message = messages[-1]
-    # TODO:, check if last messsage is ToolMessage/AIMessage
-    print("last message: ", last_message)
 
-    if state.get("user_choice"):
-        print("user choice: ", state["user_choice"])
-        # return state["user_choice"]
+    if state.get("user_choices") and len(state["user_choices"]) > 0:
         return "continue"
     else:
         return "end"
@@ -55,14 +54,15 @@ def agent(state: State, config):
 
         You should interact politely with customers to try to figure out how you can help. You can help in a few ways:
 
-        - Updating user information: if a customer wants to update the information in the user database. Call the router with `customer`
-        - Recommending music: if a customer wants to find some music or information about music. Call the router with `music`
+        - Looking up or Updating user information: if a customer wants to lookup or update the information in the user database. Call the router with ["customer"]
+        - Recommending music: if a customer wants to find some music or information about music. Call the router with ["music"]
+        - Music recommendations based on past purchases: if a customer wants music recommendations based on past purchases, call the router with ["customer, "music"].
 
-        If the user is asking or wants to ask about updating or accessing their information, send them to that route.
-        If the user is asking or wants to ask about music, send them to that route.
-
-        Your only job is to route the user to the appropriate representative. You can ask the user for more information if you are unable to help them.
+        Do not call the router multiple times.
+        
+        Your only job is to route the user to the appropriate representative(s). You can ask the user for more information if you are unable to help them.
         """
+
     messages = state["messages"]
     messages = [{"role": "system", "content": system_message}] + messages
     model = ChatOpenAI(temperature=0, model_name="gpt-4o")
@@ -75,12 +75,17 @@ def agent(state: State, config):
         for tool_call in tool_calls:
             tool_call_id = tool_call['id']
             arguments = json.loads(tool_call['function']['arguments'])
-            choice = arguments['choice']
-            tool_message = ToolMessage(content=f"Routing to {choice}", tool_call_id=tool_call_id)
+            choices = arguments['choices']
+            tool_message = ToolMessage(content=f"Routing to {choices}", tool_call_id=tool_call_id)
             state["messages"].append(tool_message)
-            state["next"] = choice
-            state["user_choice"] = choice
-            state["dispatcher_steps"] = [choice]
+            # state["next"] = choices
+            state["user_choices"] = choices
+            state["dispatcher_steps"] = choices
+            state["index"] = 0
+    else:
+        if state.get("user_choices"):
+            state["dispatcher_steps"] = state["user_choices"]
+            state["index"] = 0
     return state
 
 # Define music agent
@@ -102,7 +107,9 @@ def music_agent(state: State, config):
 
 # Define customer support agent
 def customer_support_agent(state: State, config):
-    system_message = """Your job is to help a user update their profile or look up their information.
+    system_message = """Your job is to help a user update their profile, look up their information, and retrieve the names of purchased albums.
+        You don't have the ability to help with anything else besides that.
+        
         You only have certain tools you can use. These tools require specific input.
         If you don't know the required input, then ask the user for it.
         If you are unable to help the user, you can ask the user for more information.
