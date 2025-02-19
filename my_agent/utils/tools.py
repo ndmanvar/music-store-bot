@@ -10,8 +10,8 @@ db = SQLDatabase.from_uri("sqlite:///chinook.db")
 
 @tool
 class Router(BaseModel):
-    """Call this if you are able to route the user to the appropriate representative."""
-    choice: str = Field(description="should be one of: music, customer")
+    """Call this if you are able to route the user to the appropriate representative(s)."""
+    choices: List[str] = Field(description="A list of choices, each should be one of: 'music', 'customer'")
 
 # This tool is given to the agent to look up information about a customer
 @tool
@@ -96,7 +96,7 @@ def get_purchased_albums_by_customer(customer_id):
     Get albums purchased by a customer.
     ALWAYS retrieve the customer information by looking it up first before looking up invoices.
     """
-    return db.run(f"SELECT * FROM albums WHERE AlbumId IN (SELECT AlbumId FROM invoice_items WHERE InvoiceId IN (SELECT InvoiceId FROM invoices WHERE CustomerId = {customer_id}));")
+    return db.run(f"SELECT * FROM albums WHERE AlbumId IN (SELECT AlbumId FROM invoice_items WHERE InvoiceId IN (SELECT InvoiceId FROM invoices WHERE CustomerId = {customer_id})) LIMIT 10;")
 
 @tool
 def get_top_purchased_artists_by_customer(customer_id):
