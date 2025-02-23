@@ -91,7 +91,7 @@ def music_agent(state: State, config):
         Your job is to provide music recommendations based on supplied artists, albums, or past purchases. You can also check if a song exists in the database.
         You don't have the ability to help with anything else besides that.
 
-        You only have certain tools you can use. These tools require specific input.
+        You only have certain tools you can use for recommending music. These tools require specific input. You must use these tools when recommending music.
         If a customer asks you to look something up that you don't know how, politely tell them what you can help with.
 
         When looking up artists and songs, sometimes the artist/song will not be found. In that case, the tools will return information \
@@ -108,10 +108,13 @@ def music_agent(state: State, config):
 
 # Define customer support agent
 def customer_support_agent(state: State, config):
-    system_message = """Your job is to help a user update their profile, look up their information, and retrieve the names of purchased albums.
+    system_message = """
+        Your only job is to help a user update their profile, look up their information, and retrieve the names of purchased albums.
         You don't have the ability to help with anything else besides that.
 
-        You only have certain tools you can use. These tools require specific input.
+        You only have certain tools you can use for helping the user. These tools require specific input. You must use these tools when helping the user.
+        If the user is asking for music reommendations based on past purchases, then find the purchased albums and let the user know you cannot help with music recommendations.
+
         If you don't know the required input, then ask the user for it.
         If you are unable to help the user, you can ask the user for more information.
         """
