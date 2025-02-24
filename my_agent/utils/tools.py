@@ -11,7 +11,7 @@ db = SQLDatabase.from_uri("sqlite:///chinook.db")
 @tool
 class Router(BaseModel):
     """Call this if you are able to route the user to the appropriate representative(s)."""
-    choices: List[str] = Field(description="A list of choices, each should be one of: 'music', 'customer'")
+    choices: List[str] = Field(description="A list of choices, each should be one of: 'music', 'customer', 'other'")
 
 # This tool is given to the agent to look up information about a customer
 @tool

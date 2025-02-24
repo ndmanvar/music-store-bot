@@ -30,9 +30,9 @@ def dispatcher_should_continue(state: State):
 # Define the function that determines whether to continue or not
 def should_continue(state: State):
     messages = state["messages"]
-    last_message = messages[-1]
-
     if state.get("steps") and len(state["steps"]) > 0:
+        if state["steps"][0] == "other":
+            return "other"
         return "continue"
     else:
         return "end"
@@ -47,6 +47,18 @@ def customer_should_continue(state: State):
     else:
         return "continue"
 
+def other(state: State, config):
+    system_message = """
+        Always respond with "I'm sorry, I'm not able to help with that. Please ask me something else."
+        """
+    messages = state["messages"]
+    messages = [{"role": "system", "content": system_message}] + messages
+    model = ChatOpenAI(temperature=0, model_name="gpt-4o")
+    response = model.invoke(messages)
+    state["messages"].append(response)
+    return state
+    
+
 # Define the initial greeting agent
 def agent(state: State, config):
     system_message = """Your job is to help as a customer service representative for a music store.
@@ -56,6 +68,7 @@ def agent(state: State, config):
         - Looking up or Updating user/customer information: if a customer wants to lookup or update the information in the user database. Call the router with ["customer"]
         - Recommending music: if a customer wants to find some music or information about music. Call the router with ["music"]
         - Music recommendations based on past purchases: if a customer wants music recommendations based on past purchases, call the router with ["customer, "music"].
+        - for all other inquiries, call the router with ["other"].
 
         Do not call the router multiple times.
         

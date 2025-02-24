@@ -10,7 +10,11 @@ This example was built from langgraph-example.
 
 ## Demo
 - hi what can you help me with?
+
 - lets update user information
 - Customer ID is 1, First Name is Luís, and Last Name is Gonçalves
 - state to SA
+
 - provide me music recommendations from similar artists based on my past purchased albums
+
+- where is California?
