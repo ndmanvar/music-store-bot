@@ -113,7 +113,6 @@ def music_agent(state: State, config):
     model = ChatOpenAI(temperature=0, model_name="gpt-4o")
     model = model.bind_tools([get_albums_by_artist, get_tracks_by_artist, check_for_songs])
     response = model.invoke(messages)
-    response = model.invoke(messages)
     state["messages"].append(response)
     return state
 
