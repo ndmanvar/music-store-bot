@@ -6,8 +6,8 @@ from langchain_openai import ChatOpenAI
 from langgraph.graph import END
 from langgraph.prebuilt import ToolNode
 from langgraph.prebuilt.chat_agent_executor import AgentState
-from langgraph.types import Command
 from my_agent.utils.tools import Router, get_customer_info, update_customer_info, get_albums_by_artist, check_for_songs, get_tracks_by_artist, get_invoices_by_customer, get_purchased_albums_by_customer
+from langchain.chains import OpenAIModerationChain
 
 class State(AgentState):
     # updated by greeting_agent
@@ -74,10 +74,22 @@ def agent(state: State, config):
         """
 
     messages = state["messages"]
+
+    # Moderate the input
+    last_message = messages[-1]
+    if last_message.content:
+        moderated_content = OpenAIModerationChain().invoke(last_message.content)
+        last_message.content = moderated_content['output']
+
     messages = [{"role": "system", "content": system_message}] + messages
     model = ChatOpenAI(temperature=0, model_name="gpt-4o")
     model = model.bind_tools([Router])
     response = model.invoke(messages)
+
+    # Moderate the output
+    moderated_response = OpenAIModerationChain().invoke(response.content)
+    response.content = moderated_response['output']
+
     state["messages"].append(response)
 
     if response.additional_kwargs and 'tool_calls' in response.additional_kwargs:
@@ -113,6 +125,11 @@ def music_agent(state: State, config):
     model = ChatOpenAI(temperature=0, model_name="gpt-4o")
     model = model.bind_tools([get_albums_by_artist, get_tracks_by_artist, check_for_songs])
     response = model.invoke(messages)
+
+    # Moderate the output
+    moderated_response = OpenAIModerationChain().invoke(response.content)
+    response.content = moderated_response['output']
+
     state["messages"].append(response)
     return state
 
@@ -133,6 +150,11 @@ def customer_support_agent(state: State, config):
     model = ChatOpenAI(temperature=0, model_name="gpt-4o")
     model = model.bind_tools([get_customer_info, update_customer_info, get_invoices_by_customer, get_purchased_albums_by_customer])
     response = model.invoke(messages)
+
+    # Moderate the output
+    moderated_response = OpenAIModerationChain().invoke(response.content)
+    response.content = moderated_response['output']
+    
     state["messages"].append(response)
     return state
 
