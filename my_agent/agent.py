@@ -34,7 +34,6 @@ workflow.add_conditional_edges(
     "agent", 
     should_continue, {
         "continue": "dispatcher",
-        "other": "other",
         "end": END,
     },
 )
@@ -43,6 +42,7 @@ workflow.add_conditional_edges(
     "dispatcher", 
     dispatcher_should_continue, {
         "customer": "customer",
+        "other": "other",
         "music": "music",
         "end": END,
     },

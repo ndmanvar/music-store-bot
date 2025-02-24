@@ -31,8 +31,6 @@ def dispatcher_should_continue(state: State):
 def should_continue(state: State):
     messages = state["messages"]
     if state.get("steps") and len(state["steps"]) > 0:
-        if state["steps"][0] == "other":
-            return "other"
         return "continue"
     else:
         return "end"
