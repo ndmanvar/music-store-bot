@@ -6,6 +6,26 @@ from nodes import agent, dispatcher, dispatcher_should_continue, should_continue
 from state import AgentState
 
 from langgraph.checkpoint.memory import MemorySaver
+import sqlite3
+
+# Connect to the database
+conn = sqlite3.connect('chinook.db')
+
+# Create a cursor object
+cursor = conn.cursor()
+
+# Query to get the table names
+cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+
+# Fetch all results
+tables = cursor.fetchall()
+
+# Print the table names
+for table in tables:
+    print(table[0])
+
+# Close the connection
+conn.close()
 
 memory = MemorySaver()
 
