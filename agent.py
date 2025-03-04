@@ -8,6 +8,7 @@ from state import AgentState
 from langgraph.checkpoint.memory import MemorySaver
 import sqlite3
 
+print("Start of output tablenames ==============")
 # Connect to the database
 conn = sqlite3.connect('chinook.db')
 
@@ -26,6 +27,7 @@ for table in tables:
 
 # Close the connection
 conn.close()
+print("End of output tablenames ==============")
 
 memory = MemorySaver()
 
