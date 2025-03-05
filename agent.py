@@ -2,8 +2,8 @@ from typing import TypedDict, Literal
 
 from langgraph.graph import StateGraph, END
 
-from my_agent.utils.nodes import agent, dispatcher, dispatcher_should_continue, should_continue, music_agent, customer_support_agent, customer_should_continue, customer_tool_node, music_tool_node, other
-from my_agent.utils.state import AgentState
+from nodes import agent, dispatcher, dispatcher_should_continue, should_continue, music_agent, customer_support_agent, customer_should_continue, customer_tool_node, music_tool_node, other
+from state import AgentState
 
 from langgraph.checkpoint.memory import MemorySaver
 
