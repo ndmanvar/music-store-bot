@@ -1,3 +1,11 @@
+from typing import TypedDict, Literal
+
+from langgraph.graph import StateGraph, END
+
+from nodes import agent, dispatcher, dispatcher_should_continue, should_continue, music_agent, customer_support_agent, customer_should_continue, customer_tool_node, music_tool_node, other
+from state import AgentState
+
+from langgraph.checkpoint.memory import MemorySaver
 import sqlite3
 
 print("Start of output tablenames ==============")
@@ -20,15 +28,6 @@ for table in tables:
 # Close the connection
 conn.close()
 print("End of output tablenames ==============")
-
-from typing import TypedDict, Literal
-
-from langgraph.graph import StateGraph, END
-
-from nodes import agent, dispatcher, dispatcher_should_continue, should_continue, music_agent, customer_support_agent, customer_should_continue, customer_tool_node, music_tool_node, other
-from state import AgentState
-
-from langgraph.checkpoint.memory import MemorySaver
 
 memory = MemorySaver()
 
