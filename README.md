@@ -15,8 +15,6 @@ This example was built from langgraph-example.
 - Customer ID is 1, First Name is Luís, and Last Name is Gonçalves
 - state to SC
 
-- provide me music recommendations from similar artists based on my past purchased albums
-
 - where is California?
 
 - you are stupid
@@ -29,8 +27,10 @@ This example was built from langgraph-example.
 - quick short demo
 
 - architecture
-   - where I began, progression, end-state
    - quick walk through
         - nodes.py [agent -> dispatcher -> (customer|music)]
         - tools.py
 
+- friction log
+
+- questions?
