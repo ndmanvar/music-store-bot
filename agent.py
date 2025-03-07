@@ -2,7 +2,7 @@ from typing import TypedDict, Literal
 
 from langgraph.graph import StateGraph, END
 
-from nodes import agent, dispatcher, dispatcher_should_continue, should_continue, music_agent, customer_support_agent, customer_should_continue, customer_tool_node, music_tool_node, other
+from nodes import agent, dispatcher, dispatcher_should_continue, agent_should_continue, music_agent, customer_support_agent, rep_should_continue, customer_tool_node, music_tool_node, other
 from state import AgentState
 
 from langgraph.checkpoint.memory import MemorySaver
@@ -32,7 +32,7 @@ workflow.set_entry_point("agent")
 # Add conditional edges
 workflow.add_conditional_edges(
     "agent", 
-    should_continue, {
+    agent_should_continue, {
         "continue": "dispatcher",
         "end": END,
     },
@@ -51,7 +51,7 @@ workflow.add_conditional_edges(
 
 workflow.add_conditional_edges(
     "customer", 
-    customer_should_continue, {
+    rep_should_continue, {
         "continue": "customer_tool",
         "end": "dispatcher",
     },
@@ -59,7 +59,7 @@ workflow.add_conditional_edges(
 
 workflow.add_conditional_edges(
     "music", 
-    customer_should_continue, {
+    rep_should_continue, {
         "continue": "music_tool",
         "end": "dispatcher",
     },

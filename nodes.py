@@ -14,48 +14,7 @@ class State(AgentState):
     steps: list[str]
     index: int = 0
     next: str = ""
-
-def dispatcher(state: State):
-    if state.get("steps") and len(state["steps"]) > state["index"]:
-        state["next"] = state["steps"][state["index"]]
-        state["index"] += 1
-    else:
-        state["index"] = 0
-        state["next"] = "end"
-    return state
-
-def dispatcher_should_continue(state: State):
-    return state["next"]
-
-# Define the function that determines whether to continue or not
-def should_continue(state: State):
-    messages = state["messages"]
-    if state.get("steps") and len(state["steps"]) > 0:
-        return "continue"
-    else:
-        return "end"
-
-def customer_should_continue(state: State):
-    messages = state["messages"]
-    last_message = messages[-1]
-    # If there are no tool calls, then we finish
-    if not last_message.tool_calls:
-        return "end"
-    # Otherwise if there is, we continue
-    else:
-        return "continue"
-
-def other(state: State, config):
-    system_message = """
-        Always respond with "I'm sorry, I'm not able to help with that. Please ask me something else."
-        """
-    messages = state["messages"]
-    messages = [{"role": "system", "content": system_message}] + messages
-    model = ChatOpenAI(temperature=0, model_name="gpt-4o")
-    response = model.invoke(messages)
-    state["messages"].append(response)
-    return state
-    
+   
 
 # Define the initial greeting agent
 def agent(state: State, config):
@@ -108,7 +67,29 @@ def agent(state: State, config):
             state["index"] = 0
     return state
 
-# Define music agent
+# Define the function that determines whether agent forwards to dispatcher or ends
+def agent_should_continue(state: State):
+    messages = state["messages"]
+    if state.get("steps") and len(state["steps"]) > 0:
+        return "continue"
+    else:
+        return "end"
+
+# Dispatcher gets the next step/node from the "steps" list that agent provides
+def dispatcher(state: State):
+    if state.get("steps") and len(state["steps"]) > state["index"]:
+        state["next"] = state["steps"][state["index"]]
+        state["index"] += 1
+    else:
+        state["index"] = 0
+        state["next"] = "end"
+    return state
+
+# go to the next step/node
+def dispatcher_should_continue(state: State):
+    return state["next"]
+
+# Define music representative
 def music_agent(state: State, config):
     system_message = """
         Your job is to provide music recommendations based on supplied artists, albums, or past purchases. You can also check if a song exists in the database.
@@ -133,7 +114,7 @@ def music_agent(state: State, config):
     state["messages"].append(response)
     return state
 
-# Define customer support agent
+# Define customer support representative
 def customer_support_agent(state: State, config):
     system_message = """
         Your only job is to help a user update their profile, look up their information, and retrieve the names of purchased albums.
@@ -158,6 +139,29 @@ def customer_support_agent(state: State, config):
     state["messages"].append(response)
     return state
 
+# Define the function that determines whether the customer+music reprepresentative should leverage tools
+def rep_should_continue(state: State):
+    messages = state["messages"]
+    last_message = messages[-1]
+    # If there are no tool calls, then we finish
+    if not last_message.tool_calls:
+        return "end"
+    # Otherwise if there is, we continue
+    else:
+        return "continue"
+
+# This node is called when the user asks for something that is not music or customer related
+def other(state: State, config):
+    system_message = """
+        Always respond with "I'm sorry, I'm not able to help with that. Please ask me something else."
+        """
+    messages = state["messages"]
+    messages = [{"role": "system", "content": system_message}] + messages
+    model = ChatOpenAI(temperature=0, model_name="gpt-4o")
+    response = model.invoke(messages)
+    state["messages"].append(response)
+    return state
+ 
 # Define the function to execute tools
 customer_tool_node = ToolNode([get_customer_info, update_customer_info, get_invoices_by_customer, get_purchased_albums_by_customer])
 music_tool_node = ToolNode([get_albums_by_artist, get_tracks_by_artist, check_for_songs])
