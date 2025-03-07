@@ -39,6 +39,7 @@ def agent(state: State, config):
     if last_message.content:
         moderated_content = OpenAIModerationChain().invoke(last_message.content)
         last_message.content = moderated_content['output']
+        # TODO: go to END if input is 'moderated', currently gets routed to 'other' node
 
     messages = [{"role": "system", "content": system_message}] + messages
     model = ChatOpenAI(temperature=0, model_name="gpt-4o")
@@ -59,7 +60,6 @@ def agent(state: State, config):
             choices = arguments['choices']
             tool_message = ToolMessage(content=f"Routing to {choices}", tool_call_id=tool_call_id)
             state["messages"].append(tool_message)
-            # state["next"] = choices
             state["steps"] = choices
             state["index"] = 0
     else:
